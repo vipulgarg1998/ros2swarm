@@ -14,8 +14,11 @@
 #    limitations under the License.
 import launch_ros.actions
 from launch import LaunchDescription
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
-
+from launch.actions import IncludeLaunchDescription, GroupAction
+from launch_ros.substitutions import FindPackageShare
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, TextSubstitution
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_ros.actions import PushRosNamespace
 
 def generate_launch_description():
     """Start the nodes required for the drive pattern."""
@@ -32,6 +35,66 @@ def generate_launch_description():
         parameters=[PathJoinSubstitution([config_dir, 'movement_pattern', 'basic', 'drive_pattern_v2.yaml'])],
         arguments=['--ros-args', '--log-level', log_level]
     )
+    # add pattern
+    # nav2_bringup_launch_pattern = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource([
+    #         PathJoinSubstitution([
+    #             FindPackageShare('nav2_bringup'),
+    #             'launch/navigation_launch.py'
+    #         ])
+    #     ]),
+    #     launch_arguments={
+    #         'namespace': robot_namespace,
+    #     }.items()
+    # )
+    # nav2_bringup_launch_pattern = GroupAction(
+    #     actions=[
+    #         # push-ros-namespace to set namespace of included nodes
+    #         PushRosNamespace(LaunchConfiguration(robot_namespace)),
+    #         IncludeLaunchDescription(
+    #             PythonLaunchDescriptionSource([
+    #                 PathJoinSubstitution([
+    #                     FindPackageShare('nav2_bringup'),
+    #                     'launch/navigation_launch.py'
+    #                 ])
+    #             ]),
+    #             launch_arguments={
+    #                 'namespace': robot_namespace,
+    #             }.items()
+    #         )
+    #     ]
+    # )
+
+    # include another launch file in the chatter_ns namespace
+    # slam_launch_pattern = GroupAction(
+    #     actions=[
+    #         # push-ros-namespace to set namespace of included nodes
+    #         PushRosNamespace(LaunchConfiguration(robot_namespace)),
+    #         IncludeLaunchDescription(
+    #             PythonLaunchDescriptionSource([
+    #                 PathJoinSubstitution([
+    #                     FindPackageShare('slam_toolbox'),
+    #                     'launch/online_async_launch.py'
+    #                 ])
+    #             ])
+    #         ),
+    #     ]
+    # )
+
+    # slam_launch_pattern = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource([
+    #         PathJoinSubstitution([
+    #             FindPackageShare('slam_toolbox'),
+    #             'launch/online_async_launch.py'
+    #         ])
+    #     ]),
+    #     launch_arguments={
+    #         'namespace': robot_namespace,
+    #     }.items()
+    # )
+
     ld.add_action(ros2_pattern_node)
+    # ld.add_action(nav2_bringup_launch_pattern)
+    # ld.add_action(slam_launch_pattern)
 
     return ld

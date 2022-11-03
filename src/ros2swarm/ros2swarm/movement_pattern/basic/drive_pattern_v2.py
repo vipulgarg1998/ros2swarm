@@ -55,6 +55,14 @@ class DrivePatternV2(MovementPattern):
         #self.timer = self.create_timer(timer_period, self.swarm_command_controlled(self.timer_callback))
         self.timer = self.create_timer(timer_period, self.swarm_command_controlled_timer(self.timer_callback))
         self.i = 0
+
+        self.distance_tolerance = 0.1
+        self.angle_tolerance = 0.1
+        self.K_a = 0.5
+        self.K_l = 0.5
+        self.go_to_waypoint = True
+        self.velocity_cmd = Twist()
+
         self.param_x = float(self.get_parameter("drive_linear").get_parameter_value().double_value)
         self.param_z = float(self.get_parameter("drive_angular").get_parameter_value().double_value)
         self.param_goal_x = float(self.get_parameter("goal_x").get_parameter_value().double_value)
@@ -68,23 +76,58 @@ class DrivePatternV2(MovementPattern):
         self.get_logger().info('Logger is: info ')
         self.get_logger().debug('Logger is: debug')
 
+    def get_distance_to_waypoint(self):
+        return np.sqrt((self.param_goal_x - self.pose_x)**2 + (self.param_goal_y - self.pose_y)**2)
+
+    def get_heading_error(self):
+        deltaX = self.param_goal_x - self.pose_x
+        deltaY = self.param_goal_y - self.pose_y
+        waypoint_heading = np.arctan2(deltaY, deltaX)
+        heading_error = waypoint_heading - self.pose_yaw
+
+        if(heading_error > np.pi):
+            heading_error = heading_error - (2*np.pi)
+        if(heading_error < -np.pi):
+            heading_error = heading_error + (2*np.pi)
+
+        return heading_error
+        
+    def set_velocity(self):
+        distance_to_waypoint = self.get_distance_to_waypoint()
+        heading_error = self.get_heading_error()
+
+        if(self.go_to_waypoint == True and np.abs(distance_to_waypoint) > self.distance_tolerance):
+            if(np.abs(heading_error) > self.angle_tolerance):
+                self.velocity_cmd.linear.x = 0.0
+                self.velocity_cmd.angular.z = self.K_a*heading_error
+            else:
+                self.velocity_cmd.linear.x = self.K_l*distance_to_waypoint
+                self.velocity_cmd.angular.z = 0.0
+        else:
+            self.get_logger().info('Goal has been reached!')
+            self.velocity_cmd.linear.x = 0.0
+            self.velocity_cmd.angular.z = 0.0
+            self.go_to_waypoint = False
+        
     def timer_callback(self):
         """Publish the configured twist message when called."""
         self.update_params()
-        msg = Twist()
+        self.set_velocity()
+
+        # msg = Twist()
         # command to publish the message in the terminal by hand
         # ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "{
         # linear: {x: 0.26, y: 0.0, z: 0.0},
         # angular: {x: 0.0, y: 0.0, z: 0.0}
         # }"
-        msg.angular.z = 0.1*(self.pose_yaw - np.arctan((self.param_goal_y - self.pose_y)/(self.param_goal_x - self.pose_x)))
+        # msg.angular.z = 0.1*(self.pose_yaw - np.arctan((self.param_goal_y - self.pose_y)/(self.param_goal_x - self.pose_x)))
 
-        if(np.abs(msg.angular.z) < 0.01):
-            msg.linear.x = 0.1*((self.param_goal_x - self.pose_x)**2 + (self.param_goal_y - self.pose_y)**2)**0.5
+        # if(np.abs(msg.angular.z) < 0.01):
+        #     msg.linear.x = 0.1*((self.param_goal_x - self.pose_x)**2 + (self.param_goal_y - self.pose_y)**2)**0.5
 
-        self.command_publisher.publish(msg)
-        self.get_logger().debug('Publishing {}:"{}"'.format(self.i, msg))
-        self.get_logger().info('Velocities {}:"{}"'.format(msg.linear.x, msg.angular.z))
+        self.command_publisher.publish(self.velocity_cmd)
+        # self.get_logger().debug('Publishing {}:"{}"'.format(self.i, msg))
+        # self.get_logger().info('Velocities {}:"{}"'.format(msg.linear.x, msg.angular.z))
 
     def update_params(self):
         self.param_x = float(self.get_parameter("drive_linear").get_parameter_value().double_value)
@@ -107,7 +150,7 @@ class DrivePatternV2(MovementPattern):
         self.pose_yaw = yaw
 
 
-        self.get_logger().info(f"Pose is {position.x}, {position.y}, {yaw}")
+        # self.get_logger().info(f"Pose is {position.x}, {position.y}, {yaw}")
 
     # Convert the quaternion into euler angles
     def euler_from_quaternion(self, quaternion):
