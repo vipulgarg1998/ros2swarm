@@ -32,7 +32,7 @@ def generate_launch_description():
         executable='drive_pattern_v2',
         namespace=robot_namespace,
         output='screen',
-        parameters=[PathJoinSubstitution([config_dir, 'movement_pattern', 'basic', 'drive_pattern_v2.yaml'])],
+        parameters=[PathJoinSubstitution([config_dir, 'movement_pattern', 'basic', "drive_pattern_v2.yaml"])],
         arguments=['--ros-args', '--log-level', log_level]
     )
     # add pattern

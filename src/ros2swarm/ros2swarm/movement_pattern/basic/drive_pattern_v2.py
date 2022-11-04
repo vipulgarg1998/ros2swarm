@@ -32,14 +32,17 @@ class DrivePatternV2(MovementPattern):
         """Initialize the drive pattern."""
         super().__init__('drive_pattern')
 
+        self.namespace = self.get_namespace()[1:]
+        self.get_logger().info(f"Namespace {self.namespace}")
+
         self.declare_parameters(
             namespace='',
             parameters=[
                 ('drive_timer_period', None),
                 ('drive_linear', None),
                 ('drive_angular', None),
-                ('goal_x', None),
-                ('goal_y', None),
+                (f'{self.namespace}_goal_x', None),
+                (f'{self.namespace}_goal_y', None),
             ])
 
 
@@ -65,8 +68,8 @@ class DrivePatternV2(MovementPattern):
 
         self.param_x = float(self.get_parameter("drive_linear").get_parameter_value().double_value)
         self.param_z = float(self.get_parameter("drive_angular").get_parameter_value().double_value)
-        self.param_goal_x = float(self.get_parameter("goal_x").get_parameter_value().double_value)
-        self.param_goal_y = float(self.get_parameter("goal_y").get_parameter_value().double_value)
+        self.param_goal_x = float(self.get_parameter(f"{self.namespace}_goal_x").get_parameter_value().double_value)
+        self.param_goal_y = float(self.get_parameter(f"{self.namespace}_goal_y").get_parameter_value().double_value)
 
         self.pose_x = 0
         self.pose_y = 0
@@ -114,26 +117,16 @@ class DrivePatternV2(MovementPattern):
         self.update_params()
         self.set_velocity()
 
-        # msg = Twist()
-        # command to publish the message in the terminal by hand
-        # ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "{
-        # linear: {x: 0.26, y: 0.0, z: 0.0},
-        # angular: {x: 0.0, y: 0.0, z: 0.0}
-        # }"
-        # msg.angular.z = 0.1*(self.pose_yaw - np.arctan((self.param_goal_y - self.pose_y)/(self.param_goal_x - self.pose_x)))
-
-        # if(np.abs(msg.angular.z) < 0.01):
-        #     msg.linear.x = 0.1*((self.param_goal_x - self.pose_x)**2 + (self.param_goal_y - self.pose_y)**2)**0.5
-
         self.command_publisher.publish(self.velocity_cmd)
-        # self.get_logger().debug('Publishing {}:"{}"'.format(self.i, msg))
-        # self.get_logger().info('Velocities {}:"{}"'.format(msg.linear.x, msg.angular.z))
 
     def update_params(self):
         self.param_x = float(self.get_parameter("drive_linear").get_parameter_value().double_value)
         self.param_z = float(self.get_parameter("drive_angular").get_parameter_value().double_value)
-        self.param_goal_x = float(self.get_parameter("goal_x").get_parameter_value().double_value)
-        self.param_goal_y = float(self.get_parameter("goal_y").get_parameter_value().double_value)
+        self.param_goal_x = float(self.get_parameter(f"{self.namespace}_goal_x").get_parameter_value().double_value)
+        self.param_goal_y = float(self.get_parameter(f"{self.namespace}_goal_y").get_parameter_value().double_value)
+
+        self.get_logger().info(f"Param Goal X {self.param_goal_x}")
+        self.get_logger().info(f"Param Goal Y {self.param_goal_y}")
 
     # Define the odometry callback function
     def odom_callback(self, msg):

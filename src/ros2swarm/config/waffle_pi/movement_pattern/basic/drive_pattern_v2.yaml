@@ -5,3 +5,9 @@
     drive_angular: 0.0
     goal_x: 1.0
     goal_y: 1.0
+    robot_namespace_0_goal_x: 1.0
+    robot_namespace_0_goal_y: 0.0
+    robot_namespace_1_goal_x: 1.0
+    robot_namespace_1_goal_y: 1.0
+    robot_namespace_2_goal_x: 0.0
+    robot_namespace_2_goal_y: 0.0
