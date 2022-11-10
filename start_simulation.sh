@@ -24,12 +24,13 @@
 
 colcon build --symlink-install --allow-overriding communication_interfaces launch_turtlebot_gazebo ros2swarm&&
  source ./install/setup.bash &&
- ROS_DOMAIN_ID=42 ros2 launch launch_turtlebot_gazebo create_enviroment.launch.py \
+ ROS_DOMAIN_ID=$2 ros2 launch launch_turtlebot_gazebo create_enviroment.launch.py \
  gazebo_world:=arena_large.world \
  pattern:=drive_pattern_v2 \
- number_robots:=3 \
+ number_robots:=$1 \
  log_level:=info \
- robot:=waffle_pi
+ robot:=waffle_pi \
+ ros_domain_id:=$2
 
 # gazebo_world arena_large.world | arena.world | empty.world | turtle.world | 560x540m.world | Ymaze.world | Ymaze_camber.world | Ymaze_camber_top.world
 # pattern pattern_name

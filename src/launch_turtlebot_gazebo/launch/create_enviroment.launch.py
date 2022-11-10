@@ -40,6 +40,8 @@ def generate_launch_description():
             log_level = arg.split(":=")[1]
         elif arg.startswith("robot:="):  # The type of robot
             robot = arg.split(":=")[1]
+        elif arg.startswith("ros_domain_id:="):  # The type of robot
+            ros_domain_id = arg.split(":=")[1]
         else:
             if arg not in ['/opt/ros/foxy/bin/ros2',
                            'launch',
@@ -59,6 +61,8 @@ def generate_launch_description():
     print("log level        |", log_level)
     print("---------------------------------------")
     print("robot            |", robot)
+    print("---------------------------------------")
+    print("ros domain id    |", ros_domain_id)
     print("---------------------------------------")
 
     # allows to use the same configuration files for each robot type but different mesh models
