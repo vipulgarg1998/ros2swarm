@@ -18,6 +18,7 @@ from ros2swarm.utils import setup_node
 
 # Import the ros messages
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import LaserScan
 import numpy as np
 
 class DrivePatternV2(MovementPattern):
@@ -55,6 +56,13 @@ class DrivePatternV2(MovementPattern):
             'odom',
             self.odom_callback,
             10)
+
+        # Create a subscriber to scan topic 
+        self.subscription = self.create_subscription(
+            LaserScan,
+            '/scan',
+            self.scan_callback,
+            qos_profile=qos_policy)
 
         timer_period = float(
             self.get_parameter("drive_timer_period").get_parameter_value().double_value)
@@ -165,6 +173,38 @@ class DrivePatternV2(MovementPattern):
 
 
         # self.get_logger().info(f"Pose is {position.x}, {position.y}, {yaw}")
+
+    def scan_callback(self, msg):
+        print('Scan Data: ')
+        points = []
+        print("Range in front", np.mean(msg.ranges[0]))
+        for deg, range in enumerate(msg.ranges):
+            points.append([np.cos(np.deg2rad(deg))*range, np.sin(np.deg2rad(deg))*range, 1])
+
+    def get_transformation_matrix(self):
+        yaw = np.deg2rot(self.pose_yaw)
+
+        transformation_matrix = [[np.cos(yaw), -np.sin(yaw), self.pose_x], [np.sin(yaw), np.cos(yaw), self.pose_y], [0, 0, 1]]
+        return transformation_matrix
+
+    def apply_transformation(self, points, transformation_matrix):
+
+
+    def clustering(self, points):
+        th = 0.01
+        clusters = [[points[0]]]
+        for point in points[1:]:
+            for cluster in clusters:
+                new_points_to_cluster = []
+                for cluster_point in cluster:
+                    if(self.get_distance_bw_2_points(point, cluster_point) <= th):
+                        new_points_to_cluster.append(point)
+                cluster.extend(new_points_to_cluster)
+        print(clusters)
+
+
+    def get_distance_bw_2_points(self, a, b):
+        return np.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
 
     # Convert the quaternion into euler angles
     def euler_from_quaternion(self, quaternion):
