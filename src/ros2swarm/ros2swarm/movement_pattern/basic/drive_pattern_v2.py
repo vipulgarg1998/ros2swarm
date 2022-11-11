@@ -43,6 +43,9 @@ class DrivePatternV2(MovementPattern):
                 ('drive_angular', None),
                 (f'{self.namespace}_goal_x', None),
                 (f'{self.namespace}_goal_y', None),
+                *[(f"robot_namespace_{i}_goal_x", None) for i in range(5)],
+                *[(f"robot_namespace_{i}_goal_y", None) for i in range(5)],
+                ('goals', None),
             ])
 
 
@@ -70,6 +73,14 @@ class DrivePatternV2(MovementPattern):
         self.param_z = float(self.get_parameter("drive_angular").get_parameter_value().double_value)
         self.param_goal_x = float(self.get_parameter(f"{self.namespace}_goal_x").get_parameter_value().double_value)
         self.param_goal_y = float(self.get_parameter(f"{self.namespace}_goal_y").get_parameter_value().double_value)
+        self.goals_list = []
+        self.goal = None
+
+        for i in range(5):
+            x = float(self.get_parameter(f"robot_namespace_{i}_goal_x").get_parameter_value().double_value)
+            y = float(self.get_parameter(f"robot_namespace_{i}_goal_y").get_parameter_value().double_value)
+            self.get_logger().info(f'Goals x {self.param_goal_x} and y {self.param_goal_y}')
+            self.goals_list.append([x, y])
 
         self.pose_x = 0
         self.pose_y = 0
@@ -79,12 +90,12 @@ class DrivePatternV2(MovementPattern):
         self.get_logger().info('Logger is: info ')
         self.get_logger().debug('Logger is: debug')
 
-    def get_distance_to_waypoint(self):
-        return np.sqrt((self.param_goal_x - self.pose_x)**2 + (self.param_goal_y - self.pose_y)**2)
+    def get_distance_to_waypoint(self, goal_x, goal_y):
+        return np.sqrt((goal_x - self.pose_x)**2 + (goal_y - self.pose_y)**2)
 
-    def get_heading_error(self):
-        deltaX = self.param_goal_x - self.pose_x
-        deltaY = self.param_goal_y - self.pose_y
+    def get_heading_error(self, goal_x, goal_y):
+        deltaX = goal_x - self.pose_x
+        deltaY = goal_y - self.pose_y
         waypoint_heading = np.arctan2(deltaY, deltaX)
         heading_error = waypoint_heading - self.pose_yaw
 
@@ -95,9 +106,9 @@ class DrivePatternV2(MovementPattern):
 
         return heading_error
         
-    def set_velocity(self):
-        distance_to_waypoint = self.get_distance_to_waypoint()
-        heading_error = self.get_heading_error()
+    def set_velocity(self, goal_x, goal_y):
+        distance_to_waypoint = self.get_distance_to_waypoint(goal_x, goal_y)
+        heading_error = self.get_heading_error(goal_x, goal_y)
 
         if(self.go_to_waypoint == True and np.abs(distance_to_waypoint) > self.distance_tolerance):
             if(np.abs(heading_error) > self.angle_tolerance):
@@ -115,7 +126,8 @@ class DrivePatternV2(MovementPattern):
     def timer_callback(self):
         """Publish the configured twist message when called."""
         self.update_params()
-        self.set_velocity()
+        goal = self.get_goal()
+        self.set_velocity(goal[0], goal[1])
 
         self.command_publisher.publish(self.velocity_cmd)
 
@@ -127,6 +139,15 @@ class DrivePatternV2(MovementPattern):
 
         self.get_logger().info(f"Param Goal X {self.param_goal_x}")
         self.get_logger().info(f"Param Goal Y {self.param_goal_y}")
+
+    def get_goal(self):
+        min_distance = 1000
+        final_goal = None
+        for goal in self.goals_list:
+            if(self.get_distance_to_waypoint(goal[0], goal[1]) < min_distance):
+                min_distance = self.get_distance_to_waypoint(goal[0], goal[1])
+                final_goal = goal
+        return final_goal
 
     # Define the odometry callback function
     def odom_callback(self, msg):
