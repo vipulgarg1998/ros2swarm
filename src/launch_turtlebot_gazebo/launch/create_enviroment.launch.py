@@ -111,7 +111,7 @@ def generate_launch_description():
                     '--robot_name', ['robot_name_', str(i)],
                     '--robot_namespace', ['robot_namespace_', str(i)],
                     '-x', '0.0',
-                    '-y', [str(i), '.0'],
+                    '-y', [str(i*2), '.0'],
                     '-z', '0.1',
                     '--type_of_robot', robot
                 ]

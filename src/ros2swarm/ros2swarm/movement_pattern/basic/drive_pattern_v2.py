@@ -87,7 +87,7 @@ class DrivePatternV2(MovementPattern):
         self.goals_list = []
         self.goal = None
 
-        for i in range(5):
+        for i in range(3):
             x = float(self.get_parameter(f"robot_namespace_{i}_goal_x").get_parameter_value().double_value)
             y = float(self.get_parameter(f"robot_namespace_{i}_goal_y").get_parameter_value().double_value)
             self.get_logger().info(f'Goals x {self.param_goal_x} and y {self.param_goal_y}')
@@ -101,7 +101,9 @@ class DrivePatternV2(MovementPattern):
         self.get_logger().info('Logger is: info ')
         self.get_logger().debug('Logger is: debug')
 
-    def get_distance_to_waypoint(self, goal_x, goal_y):
+    def get_distance_to_waypoint(self, goal):
+        goal_x = goal[0]
+        goal_y = goal[1]
         return np.sqrt((goal_x - self.pose_x)**2 + (goal_y - self.pose_y)**2)
 
     def get_heading_error(self, goal_x, goal_y):
@@ -118,7 +120,7 @@ class DrivePatternV2(MovementPattern):
         return heading_error
         
     def set_velocity(self, goal_x, goal_y):
-        distance_to_waypoint = self.get_distance_to_waypoint(goal_x, goal_y)
+        distance_to_waypoint = self.get_distance_to_waypoint([goal_x, goal_y])
         heading_error = self.get_heading_error(goal_x, goal_y)
 
         if(self.go_to_waypoint == True and np.abs(distance_to_waypoint) > self.distance_tolerance):
@@ -137,8 +139,10 @@ class DrivePatternV2(MovementPattern):
     def timer_callback(self):
         """Publish the configured twist message when called."""
         self.update_params()
-        goal = self.get_goal()
-        self.set_velocity(goal[0], goal[1])
+        # goal = self.get_goal()
+        if(self.goal == None):
+            return
+        self.set_velocity(self.goal[0], self.goal[1])
 
         self.command_publisher.publish(self.velocity_cmd)
 
@@ -148,15 +152,15 @@ class DrivePatternV2(MovementPattern):
         self.param_goal_x = float(self.get_parameter(f"{self.namespace}_goal_x").get_parameter_value().double_value)
         self.param_goal_y = float(self.get_parameter(f"{self.namespace}_goal_y").get_parameter_value().double_value)
 
-        self.get_logger().info(f"Param Goal X {self.param_goal_x}")
-        self.get_logger().info(f"Param Goal Y {self.param_goal_y}")
+        # self.get_logger().info(f"Param Goal X {self.param_goal_x}")
+        # self.get_logger().info(f"Param Goal Y {self.param_goal_y}")
 
     def get_goal(self):
         min_distance = 1000
         final_goal = None
         for goal in self.goals_list:
-            if(self.get_distance_to_waypoint(goal[0], goal[1]) < min_distance):
-                min_distance = self.get_distance_to_waypoint(goal[0], goal[1])
+            if(self.get_distance_to_waypoint(goal) < min_distance):
+                min_distance = self.get_distance_to_waypoint(goal)
                 final_goal = goal
         return final_goal
 
@@ -183,24 +187,57 @@ class DrivePatternV2(MovementPattern):
         # print("Range in front", np.mean(msg.ranges[0]))
         for deg, range in enumerate(msg.ranges):
             if(range <= msg.range_max and range >= msg.range_min):
-                points.append([np.cos(np.deg2rad(deg))*range, np.sin(np.deg2rad(deg))*range, 1])
+                point = [np.cos(np.deg2rad(deg))*range, np.sin(np.deg2rad(deg))*range, 1]
+                points.append(point)
+                # self.get_logger().info(f"Range {range} Deg {deg} Point {point}")
+        if(len(points) > 0):
+            tf_points = self.apply_transformation(points)
+            # self.get_logger().info(f"Transformed Points {tf_points} Points {points}")
+            clusters = self.get_clusters(tf_points)
+            object_centroids = self.get_object_centroids(clusters)
+            self.set_goal(object_centroids)
+    
+    def set_goal(self, robots_locations):
+        self.goals_list.sort(key = self.get_distance_to_waypoint)
+        self.get_logger().info(f"goals {self.goals_list}")
+        if(len(robots_locations) == 0):
+            self.goal = self.goals_list[0]
+            self.get_logger().info(f"Going for this goal {self.goal}")
+        for goal in self.goals_list:
+            robot_dists = []
+            goal_found = False
+            ego_dist_to_goal = self.get_distance_to_waypoint(goal)
+            for robot_location in robots_locations:
+                robot_dist_to_goal = self.get_distance_bw_2_points(robot_location, goal)
+                robot_dists.append(robot_dist_to_goal)
+                # self.get_logger().info(f"Ego Location {self.pose_x} and {self.pose_y} with dist {ego_dist_to_goal}, Robot Location {robot_location} with dist {robot_dist_to_goal}")
+                if(robot_dist_to_goal < ego_dist_to_goal): # 15 centres for robot radius
+                    goal_found = False
+                    continue
+                else:
+                    goal_found = True
+            # self.get_logger().info(f"Goal is {goal} Ego Location {self.pose_x} and {self.pose_y} with dist {ego_dist_to_goal}, Robots {robots_locations}, Dist {robot_dists}")
+            if(goal_found):
+                self.goal = goal
+                self.get_logger().info(f"Going for this goal {goal}")
+                return
 
-        self.clustering(points)
 
     def get_transformation_matrix(self):
-        yaw = np.deg2rot(self.pose_yaw)
+        yaw = np.deg2rad(self.pose_yaw)
 
         transformation_matrix = [[np.cos(yaw), -np.sin(yaw), self.pose_x], [np.sin(yaw), np.cos(yaw), self.pose_y], [0, 0, 1]]
         return transformation_matrix
 
-    def apply_transformation(self, points, transformation_matrix):
-        print("Nothins")
+    def apply_transformation(self, points):
+        tf = np.array(self.get_transformation_matrix())
+        points = np.array(points).T
+        return np.matmul(tf, points).T.tolist()
 
-
-    def clustering(self, points):
+    def get_clusters(self, points):
         th = 0.1
         if(len(points) == 0):
-            return
+            return []
         clusters = [[points[0]]]
         for point in points[1:]:
             cluster_id = 0
@@ -217,12 +254,34 @@ class DrivePatternV2(MovementPattern):
 
             if(point_belong_to_cluster):
                 clusters[cluster_id].append(point)
-                self.get_logger().info(f"Point Added to cluster {len(cluster)}")
+                # self.get_logger().info(f"Point Added to cluster {len(cluster)}")
             else:
                 clusters.append([point])
-                self.get_logger().info(f"New Cluster Created {len(clusters)}")
+                # self.get_logger().info(f"New Cluster Created {len(clusters)}")
         
-        self.get_logger().info(f"Number of Clusters{len(clusters)}")
+        return clusters
+        # self.get_logger().info(f"Number of Clusters{len(clusters)}")
+
+    def get_object_centroids(self, clusters):
+        object_centroids = []
+        for cluster in clusters:
+            object_centroid = self.get_object_centroid(cluster)
+            object_centroids.append(object_centroid)
+        # self.get_logger().info(f"Object Centroids {object_centroids}")
+
+        return object_centroids
+
+    def get_object_centroid(self, points):
+        centroid_x = 0.0
+        centroid_y = 0.0
+        for point in points:
+            centroid_x = centroid_x + point[0]
+            centroid_y = centroid_y + point[1]
+        
+        centroid_x = centroid_x/len(points)
+        centroid_y = centroid_y/len(points)
+
+        return [centroid_x, centroid_y]
 
 
     def get_distance_bw_2_points(self, a, b):
