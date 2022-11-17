@@ -14,7 +14,7 @@
 from geometry_msgs.msg import Twist
 from ros2swarm.movement_pattern.movement_pattern import MovementPattern
 from ros2swarm.utils import setup_node
-
+import rclpy
 
 # Import the ros messages
 from nav_msgs.msg import Odometry
@@ -57,10 +57,13 @@ class DrivePatternV2(MovementPattern):
             self.odom_callback,
             10)
 
+
+        # Define the QOS policy such that the data sent by the turtlebot is compatible with the subscriber. Change the default behavior
+        qos_policy = rclpy.qos.QoSProfile(reliability=rclpy.qos.ReliabilityPolicy.BEST_EFFORT, history=rclpy.qos.HistoryPolicy.KEEP_LAST, depth=1)
         # Create a subscriber to scan topic 
         self.subscription = self.create_subscription(
             LaserScan,
-            '/scan',
+            'scan',
             self.scan_callback,
             qos_profile=qos_policy)
 
@@ -175,11 +178,14 @@ class DrivePatternV2(MovementPattern):
         # self.get_logger().info(f"Pose is {position.x}, {position.y}, {yaw}")
 
     def scan_callback(self, msg):
-        print('Scan Data: ')
+        # print('Scan Data: ')
         points = []
-        print("Range in front", np.mean(msg.ranges[0]))
+        # print("Range in front", np.mean(msg.ranges[0]))
         for deg, range in enumerate(msg.ranges):
-            points.append([np.cos(np.deg2rad(deg))*range, np.sin(np.deg2rad(deg))*range, 1])
+            if(range <= msg.range_max and range >= msg.range_min):
+                points.append([np.cos(np.deg2rad(deg))*range, np.sin(np.deg2rad(deg))*range, 1])
+
+        self.clustering(points)
 
     def get_transformation_matrix(self):
         yaw = np.deg2rot(self.pose_yaw)
@@ -188,19 +194,35 @@ class DrivePatternV2(MovementPattern):
         return transformation_matrix
 
     def apply_transformation(self, points, transformation_matrix):
+        print("Nothins")
 
 
     def clustering(self, points):
-        th = 0.01
+        th = 0.1
+        if(len(points) == 0):
+            return
         clusters = [[points[0]]]
         for point in points[1:]:
-            for cluster in clusters:
-                new_points_to_cluster = []
+            cluster_id = 0
+            for cluster_index, cluster in enumerate(clusters):
+                point_belong_to_cluster = False
                 for cluster_point in cluster:
+                    # print(self.get_distance_bw_2_points(point, cluster_point))
                     if(self.get_distance_bw_2_points(point, cluster_point) <= th):
-                        new_points_to_cluster.append(point)
-                cluster.extend(new_points_to_cluster)
-        print(clusters)
+                        point_belong_to_cluster = True
+                        cluster_id = cluster_index
+                        break
+                if(point_belong_to_cluster):
+                    break
+
+            if(point_belong_to_cluster):
+                clusters[cluster_id].append(point)
+                self.get_logger().info(f"Point Added to cluster {len(cluster)}")
+            else:
+                clusters.append([point])
+                self.get_logger().info(f"New Cluster Created {len(clusters)}")
+        
+        self.get_logger().info(f"Number of Clusters{len(clusters)}")
 
 
     def get_distance_bw_2_points(self, a, b):
