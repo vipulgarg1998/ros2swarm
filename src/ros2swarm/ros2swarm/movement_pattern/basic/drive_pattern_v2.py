@@ -87,7 +87,7 @@ class DrivePatternV2(MovementPattern):
         self.goals_list = []
         self.goal = None
 
-        for i in range(5):
+        for i in range(3):
             x = float(self.get_parameter(f"robot_namespace_{i}_goal_x").get_parameter_value().double_value)
             y = float(self.get_parameter(f"robot_namespace_{i}_goal_y").get_parameter_value().double_value)
             self.get_logger().info(f'Goals x {self.param_goal_x} and y {self.param_goal_y}')
@@ -200,30 +200,39 @@ class DrivePatternV2(MovementPattern):
     def set_goal(self, robots_locations):
         self.goals_list.sort(key = self.get_distance_to_waypoint)
         self.get_logger().info(f"goals {self.goals_list}")
+
+        robots_to_avoid = []
         if(len(robots_locations) == 0):
             self.goal = self.goals_list[0]
             self.get_logger().info(f"Going for this goal {self.goal}")
+
         for goal in self.goals_list:
             robot_dists = []
             goal_found = False
+            robot_detected = False
             ego_dist_to_goal = self.get_distance_to_waypoint(goal)
-            for robot_location in robots_locations:
-                robot_dist_to_goal = self.get_distance_bw_2_points(robot_location, goal)
-                robot_dists.append(robot_dist_to_goal)
-                # self.get_logger().info(f"Ego Location {self.pose_x} and {self.pose_y} with dist {ego_dist_to_goal}, Robot Location {robot_location} with dist {robot_dist_to_goal}")
-                if(robot_dist_to_goal < ego_dist_to_goal + 0.15): # 15 centres for robot radius
+            for i, robot_location in enumerate(robots_locations):
+                if(not (i in robots_to_avoid)):
                     goal_found = False
-                    break
+                    robot_dist_to_goal = self.get_distance_bw_2_points(robot_location, goal)
+                    robot_dists.append(robot_dist_to_goal)
+
+                    if(robot_dist_to_goal < ego_dist_to_goal + 0.15 or robot_dist_to_goal <= self.distance_tolerance + 0.15): # 15 centres for robot radius
+                        goal_found = False
+                        robots_to_avoid.append(i)
+                        break
+                    else:
+                        goal_found = True
                 else:
                     goal_found = True
-                    # break
-            self.get_logger().info(f"Goal is {goal} Ego Location {self.pose_x} and {self.pose_y} with dist {ego_dist_to_goal}, Robots {robots_locations}, Dist {robot_dists}")
+                        # break
+            self.get_logger().info(f"Goal is {goal} Ego Location {self.pose_x} and {self.pose_y} with dist {ego_dist_to_goal}, Robots {robots_locations}, Dist {robot_dists} Robots avoided {robots_to_avoid}")
             if(goal_found):
                 self.goal = goal
                 self.get_logger().info(f"Going for this goal {goal}")
                 return
 
-
+        
     def get_transformation_matrix(self):
         yaw = np.deg2rad(self.pose_yaw)
 

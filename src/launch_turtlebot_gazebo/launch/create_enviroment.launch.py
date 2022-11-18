@@ -14,6 +14,7 @@
 #    limitations under the License.
 import os
 import sys
+import random
 import launch_ros.actions
 
 from launch import LaunchDescription
@@ -98,6 +99,14 @@ def generate_launch_description():
             launch_arguments={'world_name': world_file_name}.items(),
         )
         ld.add_action(gazebo_start)
+        
+        # Random coordinates to spawn
+        random_x = random.sample(range(0, number_robots), number_robots)
+        random_y = random.sample(range(0, number_robots), number_robots)
+
+        print('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
+        print(random_x)
+        print(random_y)
 
         for i in range(number_robots):
             # add gazebo node
@@ -110,8 +119,8 @@ def generate_launch_description():
                 arguments=[
                     '--robot_name', ['robot_name_', str(i)],
                     '--robot_namespace', ['robot_namespace_', str(i)],
-                    '-x', [str(i), '.0'],
-                    '-y', [str(i), '.0'],
+                    '-x', [str(random_x[i]), '.0'],
+                    '-y', [str(random_y[i]), '.0'],
                     '-z', '0.1',
                     '--type_of_robot', robot
                 ]
