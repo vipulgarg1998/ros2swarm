@@ -87,7 +87,7 @@ class DrivePatternV2(MovementPattern):
         self.goals_list = []
         self.goal = None
 
-        for i in range(3):
+        for i in range(5):
             x = float(self.get_parameter(f"robot_namespace_{i}_goal_x").get_parameter_value().double_value)
             y = float(self.get_parameter(f"robot_namespace_{i}_goal_y").get_parameter_value().double_value)
             self.get_logger().info(f'Goals x {self.param_goal_x} and y {self.param_goal_y}')
@@ -123,7 +123,7 @@ class DrivePatternV2(MovementPattern):
         distance_to_waypoint = self.get_distance_to_waypoint([goal_x, goal_y])
         heading_error = self.get_heading_error(goal_x, goal_y)
 
-        if(self.go_to_waypoint == True and np.abs(distance_to_waypoint) > self.distance_tolerance):
+        if(np.abs(distance_to_waypoint) > self.distance_tolerance):
             if(np.abs(heading_error) > self.angle_tolerance):
                 self.velocity_cmd.linear.x = 0.0
                 self.velocity_cmd.angular.z = self.K_a*heading_error
@@ -211,12 +211,13 @@ class DrivePatternV2(MovementPattern):
                 robot_dist_to_goal = self.get_distance_bw_2_points(robot_location, goal)
                 robot_dists.append(robot_dist_to_goal)
                 # self.get_logger().info(f"Ego Location {self.pose_x} and {self.pose_y} with dist {ego_dist_to_goal}, Robot Location {robot_location} with dist {robot_dist_to_goal}")
-                if(robot_dist_to_goal < ego_dist_to_goal): # 15 centres for robot radius
+                if(robot_dist_to_goal < ego_dist_to_goal + 0.15): # 15 centres for robot radius
                     goal_found = False
-                    continue
+                    break
                 else:
                     goal_found = True
-            # self.get_logger().info(f"Goal is {goal} Ego Location {self.pose_x} and {self.pose_y} with dist {ego_dist_to_goal}, Robots {robots_locations}, Dist {robot_dists}")
+                    # break
+            self.get_logger().info(f"Goal is {goal} Ego Location {self.pose_x} and {self.pose_y} with dist {ego_dist_to_goal}, Robots {robots_locations}, Dist {robot_dists}")
             if(goal_found):
                 self.goal = goal
                 self.get_logger().info(f"Going for this goal {goal}")
@@ -259,8 +260,8 @@ class DrivePatternV2(MovementPattern):
                 clusters.append([point])
                 # self.get_logger().info(f"New Cluster Created {len(clusters)}")
         
+        self.get_logger().info(f"Number of Clusters{len(clusters)}")
         return clusters
-        # self.get_logger().info(f"Number of Clusters{len(clusters)}")
 
     def get_object_centroids(self, clusters):
         object_centroids = []
