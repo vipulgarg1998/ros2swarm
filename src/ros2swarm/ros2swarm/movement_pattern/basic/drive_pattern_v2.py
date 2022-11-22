@@ -15,6 +15,7 @@ from geometry_msgs.msg import Twist
 from ros2swarm.movement_pattern.movement_pattern import MovementPattern
 from ros2swarm.utils import setup_node
 import rclpy
+from message_filters import TimeSynchronizer, Subscriber
 
 # Import the ros messages
 from nav_msgs.msg import Odometry
@@ -49,6 +50,10 @@ class DrivePatternV2(MovementPattern):
                 ('goals', None),
             ])
 
+
+
+        # tss = TimeSynchronizer([Subscriber(self, Odometry, "odom"), Subscriber(self, LaserScan, "scan")], 10)
+        # tss.registerCallback(self.got_odom_scan)
 
         # Create a subscriber to odometry topic 
         self.subscription = self.create_subscription(
@@ -87,7 +92,7 @@ class DrivePatternV2(MovementPattern):
         self.goals_list = []
         self.goal = None
 
-        for i in range(3):
+        for i in range(5):
             x = float(self.get_parameter(f"robot_namespace_{i}_goal_x").get_parameter_value().double_value)
             y = float(self.get_parameter(f"robot_namespace_{i}_goal_y").get_parameter_value().double_value)
             self.get_logger().info(f'Goals x {self.param_goal_x} and y {self.param_goal_y}')
@@ -163,6 +168,13 @@ class DrivePatternV2(MovementPattern):
                 min_distance = self.get_distance_to_waypoint(goal)
                 final_goal = goal
         return final_goal
+
+    def got_odom_scan(self, odom, scan):
+        self.odom_callback(odom)
+        self.scan_callback(scan)
+        self.set_velocity(self.goal[0], self.goal[1])
+
+        self.command_publisher.publish(self.velocity_cmd)
 
     # Define the odometry callback function
     def odom_callback(self, msg):

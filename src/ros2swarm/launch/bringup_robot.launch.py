@@ -69,7 +69,7 @@ def generate_launch_description():
     print("---------------------------------------")
 
     robot_type = robot
-    robot_node = True
+    robot_node = False  ############# It was true before
     if robot_type.startswith('burger'):
         robot_type = "burger"
     elif robot_type.startswith('waffle_pi'):
@@ -118,7 +118,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource([launch_file_dir, '/' + 'bringup_patterns.launch.py']),
         launch_arguments={'robot': robot,
                           'robot_type': robot_type,
-                          'robot_namespace': ['robot_namespace_', str(robot_number)],
+                          'robot_namespace': ['agent_', str(robot_number)],
                           'pattern': pattern_path,
                           'config_dir': config_dir,
                           'urdf_file': urdf_file
