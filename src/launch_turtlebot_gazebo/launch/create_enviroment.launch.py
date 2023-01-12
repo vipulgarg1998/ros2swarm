@@ -118,7 +118,7 @@ def generate_launch_description():
                 output='screen',
                 arguments=[
                     '--robot_name', ['robot_name_', str(i)],
-                    '--robot_namespace', ['robot_namespace_', str(i)],
+                    '--robot_namespace', ['robot', str(i)], # ['']
                     '-x', [str(random_x[i]), '.0'],
                     '-y', [str(random_y[i]), '.0'],
                     '-z', '0.1',
@@ -146,7 +146,7 @@ def generate_launch_description():
                 [launch_bringup_dir, '/' + 'bringup_patterns.launch.py']),
             launch_arguments={'robot': robot,
                               'robot_type': robot_type,
-                              'robot_namespace': ['robot_namespace_', str(i)],
+                              'robot_namespace': ['robot', str(i)],
                               'pattern': pattern_path,
                               'config_dir': config_dir,
                               'urdf_file': urdf_file}.items(),

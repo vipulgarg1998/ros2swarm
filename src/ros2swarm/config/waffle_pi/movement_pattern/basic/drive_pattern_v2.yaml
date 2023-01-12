@@ -15,4 +15,14 @@
     robot_namespace_3_goal_y: 3.0
     robot_namespace_4_goal_x: 1.5
     robot_namespace_4_goal_y: 1.5
+    robot0_goal_x: 3.0
+    robot0_goal_y: 0.0
+    robot1_goal_x: 0.0
+    robot1_goal_y: 0.0
+    robot2_goal_x: 0.0
+    robot2_goal_y: 3.0
+    robot3_goal_x: 3.0
+    robot3_goal_y: 3.0
+    robot4_goal_x: 1.5
+    robot4_goal_y: 1.5
 

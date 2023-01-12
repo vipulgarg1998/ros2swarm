@@ -20,12 +20,13 @@
 #  pattern:=aggregation_pattern \
 #  number_robots:=9 \
 #  log_level:=info \
-#  robot:=waffle_pi
+#  robot:=waffle_pi \
+#  ros_domain_id:=42
 
 colcon build --symlink-install --allow-overriding communication_interfaces launch_turtlebot_gazebo ros2swarm&&
  source ./install/setup.bash &&
  ROS_DOMAIN_ID=$2 ros2 launch launch_turtlebot_gazebo create_enviroment.launch.py \
- gazebo_world:=arena_large.world \
+ gazebo_world:=arena.world \
  pattern:=drive_pattern_v2 \
  number_robots:=$1 \
  log_level:=info \
