@@ -1,16 +1,3 @@
-#    Copyright 2020 Marian Begemann
-#
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#
-#        http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
 from geometry_msgs.msg import Twist
 from ros2swarm.movement_pattern.movement_pattern import MovementPattern
 from ros2swarm.utils import setup_node
@@ -30,7 +17,7 @@ class DrivePatternV2(MovementPattern):
     How often the direction is published is configured in the timer period parameter.
     """
 
-    def __init__(self):
+    def __init__(self, nearest_goal_search = False):
         """Initialize the drive pattern."""
         super().__init__('drive_pattern')
 
@@ -106,6 +93,9 @@ class DrivePatternV2(MovementPattern):
         self.get_logger().info('Logger is: info ')
         self.get_logger().debug('Logger is: debug')
 
+        # Navigation Settings
+        self.nearest_goal_search = nearest_goal_search
+
     def get_distance_to_waypoint(self, goal):
         goal_x = goal[0]
         goal_y = goal[1]
@@ -147,7 +137,11 @@ class DrivePatternV2(MovementPattern):
         # goal = self.get_goal()
         if(self.goal == None):
             return
-        self.set_velocity(self.goal[0], self.goal[1])
+        
+        if(self.nearest_goal_search):
+            self.set_velocity(self.goal[0], self.goal[1])
+        else:
+            self.set_velocity(self.param_goal_x, self.param_goal_y)
 
         self.command_publisher.publish(self.velocity_cmd)
 
